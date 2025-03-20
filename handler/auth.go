@@ -11,11 +11,10 @@ import (
 	"github.com/Sigdriv/paskelabyrint-api/model"
 	"github.com/gin-gonic/gin"
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgxpool"
 	log "github.com/sirupsen/logrus"
 	"golang.org/x/crypto/bcrypt"
 )
-
-var sessions = map[string]model.Session{}
 
 func signUp(c *gin.Context) {
 	var newUser model.User
@@ -105,15 +104,62 @@ func signin(c *gin.Context) {
 		return
 	}
 
+	setCookie(c, conn, creds.Email, creds.Remember)
+}
+
+func generateSecureToken(length int) string {
+	token := make([]byte, length)
+	_, err := rand.Read(token)
+	if err != nil {
+		log.Error("Error generating secure token >> ", err)
+		return ""
+	}
+	return base64.StdEncoding.EncodeToString(token)
+}
+
+// func test(c *gin.Context) {
+// 	sessionToken, err := c.Cookie("session_token")
+// 	if err != nil {
+// 		if err == http.ErrNoCookie {
+// 			log.Warn("No session token found >> ", err)
+// 			c.JSON(http.StatusUnauthorized, gin.H{"error": "No session token found"})
+// 			return
+// 		}
+
+// 		log.Error("Error retrieving session token >> ", err)
+// 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
+// 		return
+// 	}
+
+// 	userSession, exisits := sessions[sessionToken]
+// 	if !exisits {
+// 		log.Warn("Session token not found >> ", sessionToken)
+// 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid session token"})
+// 		return
+// 	}
+
+// 	if userSession.IsExpired() {
+// 		delete(sessions, sessionToken)
+// 		log.Warn("Session token expired >> ", sessionToken)
+// 		c.JSON(http.StatusUnauthorized, gin.H{"error": "Session token expired"})
+// 		return
+// 	}
+
+// 	log.Infof("Session token valid >> %s, User: %s", sessionToken, userSession.Email)
+// 	c.JSON(http.StatusOK, gin.H{"message": "Session token valid", "user": userSession.Email})
+// }
+
+func setCookie(c *gin.Context, conn *pgxpool.Pool, email string, remember bool) {
+
 	sessionToken := generateSecureToken(128)
 
 	expireTime := 24 // Default to 24 hours
-	if creds.Remember {
+	if remember {
 		expireTime = 720 // 30 days
 	}
 	expiresAt := time.Now().Add(time.Duration(expireTime) * time.Hour)
 
-	_, err = conn.Exec(c, "DELETE FROM Sessions WHERE email = $1", creds.Email)
+	_, err := conn.Exec(c, "DELETE FROM Sessions WHERE email = $1", email)
 	if err != nil {
 		log.Error("Error deleting old session >> ", err)
 		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
@@ -122,7 +168,7 @@ func signin(c *gin.Context) {
 
 	session := model.Session{
 		ID:        sessionToken,
-		Email:     creds.Email,
+		Email:     email,
 		CreatedAt: time.Now(),
 		Expiry:    expiresAt,
 	}
@@ -140,53 +186,16 @@ func signin(c *gin.Context) {
 		return
 	}
 
-	http.SetCookie(c.Writer, &http.Cookie{
-		Name:     "session_token",
-		Value:    sessionToken,
-		Expires:  expiresAt,
-		HttpOnly: true,
-		Secure:   true,
-	})
-}
+	c.SetCookie(
+		"session_token",
+		sessionToken,
+		int(expireTime*60*60),
+		"/",
+		"",
+		false,
+		true,
+	)
 
-func generateSecureToken(length int) string {
-	token := make([]byte, length)
-	_, err := rand.Read(token)
-	if err != nil {
-		log.Error("Error generating secure token >> ", err)
-		return ""
-	}
-	return base64.StdEncoding.EncodeToString(token)
-}
-
-func test(c *gin.Context) {
-	sessionToken, err := c.Cookie("session_token")
-	if err != nil {
-		if err == http.ErrNoCookie {
-			log.Warn("No session token found >> ", err)
-			c.JSON(http.StatusUnauthorized, gin.H{"error": "No session token found"})
-			return
-		}
-
-		log.Error("Error retrieving session token >> ", err)
-		c.JSON(http.StatusInternalServerError, gin.H{"error": "Internal server error"})
-		return
-	}
-
-	userSession, exisits := sessions[sessionToken]
-	if !exisits {
-		log.Warn("Session token not found >> ", sessionToken)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Invalid session token"})
-		return
-	}
-
-	if userSession.IsExpired() {
-		delete(sessions, sessionToken)
-		log.Warn("Session token expired >> ", sessionToken)
-		c.JSON(http.StatusUnauthorized, gin.H{"error": "Session token expired"})
-		return
-	}
-
-	log.Infof("Session token valid >> %s, User: %s", sessionToken, userSession.Email)
-	c.JSON(http.StatusOK, gin.H{"message": "Session token valid", "user": userSession.Email})
+	log.Infof("Session token set >> %s, User: %s", sessionToken, email)
+	c.Redirect(http.StatusTemporaryRedirect, "http://localhost:3000/auth/login")
 }

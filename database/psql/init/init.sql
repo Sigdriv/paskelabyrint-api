@@ -12,7 +12,7 @@ CREATE TABLE Users (
     id SERIAL PRIMARY KEY,
     name VARCHAR(120) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
-    password TEXT NOT NULL,
+    password TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
