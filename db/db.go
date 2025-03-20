@@ -16,7 +16,13 @@ func DBConnect() (*pgxpool.Pool, error) {
 
 	pool, err := pgxpool.New(context.Background(), dbURL)
 	if err != nil {
-		return nil, fmt.Errorf("unable to connect to database: %v", err)
+		return nil, fmt.Errorf("unable to connect to database << %v", err)
+	}
+
+	err = pool.Ping(context.Background())
+	if err != nil {
+		pool.Close()
+		return nil, fmt.Errorf("unable to ping database << %v", err)
 	}
 
 	return pool, nil

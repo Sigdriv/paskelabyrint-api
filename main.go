@@ -1,11 +1,10 @@
 package main
 
 import (
-	"context"
 	"os"
 
+	"github.com/Sigdriv/paskelabyrint-api/db"
 	handler "github.com/Sigdriv/paskelabyrint-api/handler"
-	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 )
@@ -20,15 +19,15 @@ func main() {
 
 	err := godotenv.Load()
 	if err != nil {
-		log.Fatalf("err loading: %v", err)
+		log.Fatalf("err loading << %v", err)
 	}
 
-	dbPool, err := pgxpool.New(context.Background(), os.Getenv("DATABASE_URL"))
+	conn, err := db.DBConnect()
 	if err != nil {
-		log.Fatal("Unable to create connection pool: ", err)
+		log.Fatal("Unable to connect to database << ", err)
 		os.Exit(1)
 	}
-	defer dbPool.Close()
+	defer conn.Close()
 
 	log.Info("Connected to database successfully")
 

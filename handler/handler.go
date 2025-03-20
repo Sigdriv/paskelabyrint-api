@@ -7,6 +7,9 @@ func Handler() {
 
 	// TODO: Add signin, signup, and signout routes
 	// https://www.sohamkamani.com/golang/session-cookie-authentication/
+	router.GET("/signin", signin)
+	router.GET("/test", test)
+	router.POST("/signup", signUp)
 
 	// TODO: Add oauth with google
 	// https://medium.com/@_RR/google-oauth-2-0-and-golang-4cc299f8c1ed

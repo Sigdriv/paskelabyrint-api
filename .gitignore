@@ -2,3 +2,4 @@
 paskelabyrint-api
 .DS_Store
 database/psql/data
+__*
