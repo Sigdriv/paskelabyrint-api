@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/Sigdriv/paskelabyrint-api/db"
-	"github.com/Sigdriv/paskelabyrint-api/mapping"
+
 	"github.com/Sigdriv/paskelabyrint-api/model"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
@@ -20,7 +20,12 @@ func postTeam(c *gin.Context) {
 		return
 	}
 
-	dbTeam := mapping.TeamToDBTeam(newTeam)
+	user, err := getUser(c)
+	if err != nil {
+		log.Error("Failed to get user >> ", err)
+		c.IndentedJSON(http.StatusUnauthorized, gin.H{"message": "Unauthorized"})
+		return
+	}
 
 	conn, err := db.DBConnect()
 	if err != nil {
@@ -30,16 +35,40 @@ func postTeam(c *gin.Context) {
 	}
 	defer conn.Close()
 
+	rows, err := conn.Query(c, `select team_name from teams`)
+	if err != nil {
+		log.Error("Failed to query database >>", err)
+		c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Database query error"})
+		return
+	}
+	defer rows.Close()
+
+	for rows.Next() {
+		var teamName string
+		err := rows.Scan(&teamName)
+		if err != nil {
+			log.Error("Failed to scan row >>", err)
+			c.IndentedJSON(http.StatusInternalServerError, gin.H{"message": "Database scan error"})
+			return
+		}
+
+		if teamName == newTeam.TeamName {
+			log.Error("Team name already exists >> ", newTeam.TeamName)
+			c.IndentedJSON(http.StatusBadRequest, gin.H{"message": "Team name already exists"})
+			return
+		}
+	}
+
 	_, err = conn.Exec(c, `INSERT INTO teams`+
 		`(name, email, count_participants, youngest_participant_age, oldest_participant_age, team_name, created_by_id)`+
 		`VALUES ($1, $2, $3, $4, $5, $6, $7)`,
-		dbTeam.Name,
-		dbTeam.Email,
-		dbTeam.CountParticipants,
-		dbTeam.YoungestParticipantAge,
-		dbTeam.OldestParticipantAge,
-		dbTeam.TeamName,
-		dbTeam.CreatedByID,
+		newTeam.Name,
+		newTeam.Email,
+		newTeam.CountParticipants,
+		newTeam.YoungestParticipantAge,
+		newTeam.OldestParticipantAge,
+		newTeam.TeamName,
+		user.ID,
 	)
 	if err != nil {
 		log.Error("Failed to insert team into database >>", err)

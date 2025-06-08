@@ -72,11 +72,19 @@ func oauthGoogleCallback(c *gin.Context) {
 		if err != nil {
 			log.Error("Failed to save user data >> ", err)
 			c.JSON(http.StatusInternalServerError, gin.H{"error": "Failed to save user data"})
+
 			return
 		}
 	}
 
-	setCookie(c, conn, userInfo.Email, false)
+	if userExists != "" {
+		err = updateUser(conn, userInfo, userExists)
+		if err != nil {
+			log.Error("Failed to update user data >> ", err)
+		}
+	}
+
+	setCookie(c, conn, userInfo.Email, false, false)
 }
 
 func getUserDataFromGoogle(state string, code string) ([]byte, error) {
@@ -119,9 +127,23 @@ func getUserDataFromGoogle(state string, code string) ([]byte, error) {
 
 func saveUser(conn *pgxpool.Pool, userInfo model.GoogleUserInfo) error {
 
-	_, err := conn.Exec(context.Background(), "INSERT INTO users(name, email) VALUES ($1, $2)", userInfo.Name, userInfo.Email)
+	_, err := conn.Exec(context.Background(),
+		"INSERT INTO users(name, email, avatar) VALUES ($1, $2, $3)",
+		userInfo.Name, userInfo.Email, userInfo.Picture)
 	if err != nil {
 		return fmt.Errorf("Failed to insert user into database >> %v", err)
+	}
+
+	return nil
+}
+
+func updateUser(conn *pgxpool.Pool, userInfo model.GoogleUserInfo, userIndex string) error {
+
+	_, err := conn.Exec(context.Background(),
+		"UPDATE users SET name = $1, avatar = $2 WHERE id = $3",
+		userInfo.Name, userInfo.Picture, userIndex)
+	if err != nil {
+		return fmt.Errorf("Failed to update user into database >> %v", err)
 	}
 
 	return nil

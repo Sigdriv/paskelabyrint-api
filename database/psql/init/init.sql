@@ -8,13 +8,26 @@
 -- \connect Paskelabyrint;
 
 -- Create the "users" table
+
+CREATE TYPE user_role AS ENUM ('USER', 'ADMIN', 'DEV');
+
 CREATE TABLE Users (
     id SERIAL PRIMARY KEY,
     name VARCHAR(120) NOT NULL,
     email VARCHAR(100) UNIQUE NOT NULL,
     password TEXT,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+    Role user_role NOT NULL DEFAULT 'USER',
+    avatar TEXT,
 );
+
+CREATE TABLE resetPassword (
+    id SERIAL PRIMARY KEY,
+    token TEXT UNIQUE NOT NULL,
+    expires_at TIMESTAMP,
+    created_by_id INT NOT NULL REFERENCES users(id),
+    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+)
 
 CREATE TABLE Sessions (
     id VARCHAR(200) PRIMARY KEY UNIQUE NOT NULL,

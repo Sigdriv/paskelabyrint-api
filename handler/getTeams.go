@@ -4,7 +4,7 @@ import (
 	"net/http"
 
 	"github.com/Sigdriv/paskelabyrint-api/db"
-	"github.com/Sigdriv/paskelabyrint-api/dbstrucs"
+	"github.com/Sigdriv/paskelabyrint-api/model"
 	"github.com/gin-gonic/gin"
 	log "github.com/sirupsen/logrus"
 )
@@ -27,9 +27,9 @@ func getTeams(c *gin.Context) {
 	}
 	defer rows.Close()
 
-	var teams []dbstrucs.Team
+	var teams []model.Team
 	for rows.Next() {
-		var team dbstrucs.Team
+		var team model.Team
 		err := rows.Scan(&team.ID, &team.Name, &team.Email, &team.CountParticipants, &team.YoungestParticipantAge, &team.OldestParticipantAge, &team.TeamName, &team.CreatedByID)
 		if err != nil {
 			log.Error("Failed to scan team >>", err)

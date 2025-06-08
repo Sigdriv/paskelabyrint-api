@@ -4,7 +4,7 @@ import (
 	"os"
 
 	"github.com/Sigdriv/paskelabyrint-api/db"
-	handler "github.com/Sigdriv/paskelabyrint-api/handler"
+	"github.com/Sigdriv/paskelabyrint-api/handler"
 	"github.com/joho/godotenv"
 	log "github.com/sirupsen/logrus"
 )
@@ -31,5 +31,8 @@ func main() {
 
 	log.Info("Connected to database successfully")
 
-	handler.Handler()
+	srv, _ := handler.CreateHandler()
+
+	srv.CreateGinGroup()
+
 }
